@@ -1,0 +1,163 @@
+{
+  "info": {
+    "_postman_id": "761d198f-0cc8-48b0-ad97-95bdc3df0bf8",
+    "name": "Personalized Storybook Preview API",
+    "description": "Collection for creating, starting, and polling personalized storybook preview requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Create Preview Request",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.preview_request_id) {",
+              "    pm.collectionVariables.set(\"preview_request_id\", jsonData.preview_request_id);",
+              "    console.log(\"Saved preview_request_id: \" + jsonData.preview_request_id);",
+              "}"
+            ],
+            "type": "javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "book_template_id",
+              "value": "1",
+              "type": "text",
+              "description": "ID of the Book Template to preview"
+            },
+            {
+              "key": "child_name",
+              "value": "Emily",
+              "type": "text",
+              "description": "Name of the child"
+            },
+            {
+              "key": "child_age",
+              "value": "5",
+              "type": "text",
+              "description": "Age of the child"
+            },
+            {
+              "key": "child_gender",
+              "value": "girl",
+              "type": "text",
+              "description": "Gender of the child (boy | girl | neutral)"
+            },
+            {
+              "key": "photo1",
+              "type": "file",
+              "src": "",
+              "description": "First reference face photo"
+            },
+            {
+              "key": "photo2",
+              "type": "file",
+              "src": "",
+              "description": "Second reference face photo"
+            },
+            {
+              "key": "photo3",
+              "type": "file",
+              "src": "",
+              "description": "Third reference face photo"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/previews/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "previews",
+            ""
+          ]
+        },
+        "description": "Creates a new preview request session by uploading the child's info and three reference photos. The preview_request_id returned will be auto-saved to collection variables."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Start Preview Generation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/previews/{{preview_request_id}}/start/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "previews",
+            "{{preview_request_id}}",
+            "start",
+            ""
+          ]
+        },
+        "description": "Triggers the background Celery task to begin generating the preview pages using ComfyUI."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Get Preview Status & Results",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/previews/{{preview_request_id}}/status/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "previews",
+            "{{preview_request_id}}",
+            "status",
+            ""
+          ]
+        },
+        "description": "Polls the status of the preview request. Once completed, it returns the generated page image URLs."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "preview_request_id",
+      "value": "ca7c8651-789a-4c2c-88e2-f674510ad671",
+      "type": "string"
+    }
+  ]
+}
