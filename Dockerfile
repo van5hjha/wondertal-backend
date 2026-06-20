@@ -20,8 +20,11 @@ RUN pip install -r requirements.txt gunicorn whitenoise
 # Copy project
 COPY . /app/
 
+# Make the startup script executable
+RUN chmod +x /app/start.sh
+
 # Collect static files (if you are using Django's staticfiles)
 RUN python manage.py collectstatic --noinput || true
 
-# Run the application
-CMD gunicorn backend.wsgi:application --bind 0.0.0.0:${PORT:-8000}
+# Run the application (starts both web and celery)
+CMD ["/app/start.sh"]
