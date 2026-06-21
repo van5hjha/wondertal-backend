@@ -33,6 +33,9 @@ DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes', 't')
 
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', '').split(',') if host.strip()]
 
+# Trust all allowed hosts for CSRF (needed for HTTPS proxies like Railway)
+CSRF_TRUSTED_ORIGINS = ['https://' + host for host in ALLOWED_HOSTS]
+
 
 # Application definition
 
