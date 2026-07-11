@@ -20,8 +20,20 @@ class Product(models.Model):
     def __str__(self):
         return self.title
 
+class ProductPreviewItem(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='preview_items')
+    item_type = models.CharField(max_length=20, choices=[('static', 'Static'), ('slide', 'Slide')], default='static')
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f"{self.item_type.capitalize()} Preview Item for {self.product.title}"
+
 class ProductPreviewImage(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='preview_images')
+    item = models.ForeignKey(ProductPreviewItem, on_delete=models.CASCADE, related_name='images', null=True, blank=True)
     image = models.ImageField(upload_to='catalog/previews/')
     order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -30,7 +42,7 @@ class ProductPreviewImage(models.Model):
         ordering = ['order', 'id']
 
     def __str__(self):
-        return f"Preview Image for {self.product.title} - {self.image.name if self.image else 'No Image'}"
+        return f"Image for {self.item}"
 
 
 class BookTemplate(models.Model):
