@@ -1,1 +1,9 @@
 .env
+__pycache__/
+*.pyc
+media/
+db.sqlite3
+patch_*.py
+mock_*.py
+.venv/
+test.pdf

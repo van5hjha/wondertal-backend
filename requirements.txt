@@ -29,3 +29,5 @@ urllib3==2.7.0
 vine==5.1.0
 wcwidth==0.8.1
 whitenoise==6.12.0
+cairosvg==2.9.0
+pypdf==6.14.2

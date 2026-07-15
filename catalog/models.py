@@ -62,8 +62,9 @@ class PageTemplate(models.Model):
     book_template = models.ForeignKey(BookTemplate, on_delete=models.CASCADE, related_name='pages')
     page_number = models.PositiveIntegerField()
     story_text = models.TextField(blank=True, null=True)
-    image_name = models.CharField(max_length=255, null=True, blank=True)
-    mask_image_name = models.CharField(max_length=255, null=True, blank=True)
+    image = models.ImageField(upload_to='templates/pages/images/', null=True, blank=True)
+    mask_image = models.ImageField(upload_to='templates/pages/masks/', null=True, blank=True)
+    svg_template = models.FileField(upload_to='templates/svgs/', default='templates/svgs/default.svg')
     is_preview = models.BooleanField(default=False)
 
     class Meta:

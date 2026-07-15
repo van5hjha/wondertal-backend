@@ -4,7 +4,10 @@ import time
 import logging
 import requests
 import random
+import re
+
 from django.conf import settings
+from config.models import SiteConfiguration
 from django.core.files.base import ContentFile
 from catalog.models import BookTemplate, PageTemplate
 from .models import BookRequest, BookResult, BookPage, PreviewRequest, PreviewResult, ChildFace
@@ -14,21 +17,42 @@ logger = logging.getLogger(__name__)
 class ComfyUIClient:
     def __init__(self, base_url=None):
         if not base_url:
-            base_url = getattr(settings, 'COMFYUI_SERVER_URL', 'http://localhost:8188')
+            base_url = SiteConfiguration.get_solo().comfyui_url
         self.base_url = base_url.rstrip('/')
 
-    def upload_image(self, file_field):
+    def image_exists(self, filename, folder_type="input"):
+        """Checks if an image exists on ComfyUI via HEAD or streamed GET on /view"""
+        url = f"{self.base_url}/view"
+        params = {"filename": filename, "type": folder_type}
+        try:
+            response = requests.head(url, params=params)
+            if response.status_code == 405:
+                # Fallback to streaming GET if HEAD is not allowed
+                response = requests.get(url, params=params, stream=True)
+                response.close()
+            return response.status_code == 200
+        except Exception as e:
+            logger.warning(f"Error checking if image exists: {e}")
+            return False
+
+    def upload_image(self, file_field, overwrite=True):
         """
-        Uploads a child's face image (from a Django FileField/ImageField) to ComfyUI.
+        Uploads an image (from a Django FileField/ImageField) to ComfyUI.
+        Skips upload if the file already exists on ComfyUI with the exact same name.
         """
+        filename = os.path.basename(file_field.name)
+        if self.image_exists(filename, folder_type="input"):
+            logger.info(f"Image {filename} already exists on ComfyUI, skipping upload.")
+            return filename
+
         url = f"{self.base_url}/upload/image"
         
         # Read file bytes directly from storage
         file_field.open('rb')
         try:
-            filename = os.path.basename(file_field.name)
             files = {'image': (filename, file_field.read(), 'image/png')}
-            response = requests.post(url, files=files)
+            data = {'overwrite': 'true'} if overwrite else {}
+            response = requests.post(url, files=files, data=data)
         finally:
             file_field.close()
 
@@ -92,6 +116,33 @@ class ComfyUIClient:
         
         raise Exception(f"ComfyUI prompt execution timed out for prompt_id: {prompt_id}")
 
+
+
+def process_svg_subtitle(page_template, child_name, raw_image_url):
+    if not page_template.svg_template:
+        return None
+    try:
+        page_template.svg_template.open('r')
+        svg_content = page_template.svg_template.read()
+        if isinstance(svg_content, bytes):
+            svg_content = svg_content.decode('utf-8')
+    finally:
+        page_template.svg_template.close()
+        
+    # Replace Vivaan
+    child_name = child_name or "Child"
+    svg_content = svg_content.replace("vivaan", child_name.lower())
+    svg_content = svg_content.replace("Vivaan", child_name.capitalize())
+    svg_content = svg_content.replace("VIVAAN", child_name.upper())
+    
+    image_tag = f'\n  <image href="{raw_image_url}" x="0" y="0" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" />\n'
+    
+    match = re.search(r'<svg[^>]*>', svg_content, re.IGNORECASE)
+    if match:
+        insert_pos = match.end()
+        svg_content = svg_content[:insert_pos] + image_tag + svg_content[insert_pos:]
+        
+    return svg_content.encode('utf-8')
 
 def convert_ui_to_api(ui_workflow_dict):
     """
@@ -213,9 +264,17 @@ def process_preview_request(preview_request, page_number=None):
             api_prompt["23"]["inputs"]["image"] = face_filenames[1]
             api_prompt["26"]["inputs"]["image"] = face_filenames[2]
             
-            # Set the scene and mask image names (already present on ComfyUI, so we just pass the names)
-            api_prompt["8"]["inputs"]["image"] = page.image_name or ""
-            api_prompt["28"]["inputs"]["image"] = page.mask_image_name or ""
+            # Upload or retrieve the scene and mask images
+            scene_image_name = ""
+            mask_image_name = ""
+            if page.image:
+                scene_image_name = client.upload_image(page.image)
+            if page.mask_image:
+                mask_image_name = client.upload_image(page.mask_image)
+            
+            # Set the scene and mask image names
+            api_prompt["8"]["inputs"]["image"] = scene_image_name
+            api_prompt["28"]["inputs"]["image"] = mask_image_name
             
             # Set a random seed to avoid ComfyUI caching issues
             if "13" in api_prompt and "inputs" in api_prompt["13"]:
@@ -232,7 +291,15 @@ def process_preview_request(preview_request, page_number=None):
                 defaults={"page_template": page}
             )
             preview_result.page_template = page
-            preview_result.generated_image.save(filename, ContentFile(img_bytes), save=True)
+            preview_result.raw_image.save(filename, ContentFile(img_bytes), save=True)
+            
+            if page.svg_template:
+                child_name = preview_request.child_name or "Child"
+                svg_bytes = process_svg_subtitle(page, child_name, preview_result.raw_image.url)
+                if svg_bytes:
+                    svg_filename = f"page_{page.page_number}_{filename.split('.')[0]}.svg"
+                    preview_result.generated_svg.save(svg_filename, ContentFile(svg_bytes), save=True)
+            
             logger.info(f"Page {page.page_number} processed and saved successfully.")
 
         preview_request.status = 'completed'
@@ -312,9 +379,17 @@ def process_book_request(book_request):
             api_prompt["23"]["inputs"]["image"] = face_filenames[1]
             api_prompt["26"]["inputs"]["image"] = face_filenames[2]
             
-            # Set the scene and mask image names (referenced by name, already present on ComfyUI)
-            api_prompt["8"]["inputs"]["image"] = page.image_name or ""
-            api_prompt["28"]["inputs"]["image"] = page.mask_image_name or ""
+            # Upload or retrieve the scene and mask images
+            scene_image_name = ""
+            mask_image_name = ""
+            if page.image:
+                scene_image_name = client.upload_image(page.image)
+            if page.mask_image:
+                mask_image_name = client.upload_image(page.mask_image)
+            
+            # Set the scene and mask image names
+            api_prompt["8"]["inputs"]["image"] = scene_image_name
+            api_prompt["28"]["inputs"]["image"] = mask_image_name
             
             # Set a random seed to avoid ComfyUI caching issues
             if "13" in api_prompt and "inputs" in api_prompt["13"]:
@@ -332,7 +407,15 @@ def process_book_request(book_request):
             )
             book_page.page_template = page
             book_page.is_preview = page.is_preview
-            book_page.generated_image.save(filename, ContentFile(img_bytes), save=True)
+            book_page.raw_image.save(filename, ContentFile(img_bytes), save=True)
+            
+            if page.svg_template:
+                child_name = book_result.child_name or "Child"
+                svg_bytes = process_svg_subtitle(page, child_name, book_page.raw_image.url)
+                if svg_bytes:
+                    svg_filename = f"page_{page.page_number}_{filename.split('.')[0]}.svg"
+                    book_page.generated_svg.save(svg_filename, ContentFile(svg_bytes), save=True)
+            
             logger.info(f"Page {page.page_number} processed and saved successfully.")
 
         book_request.status = 'created'

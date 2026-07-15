@@ -67,6 +67,8 @@ class PreviewResult(models.Model):
     page_template = models.ForeignKey(PageTemplate, on_delete=models.SET_NULL, null=True, blank=True)
     page_number = models.PositiveIntegerField()
     generated_image = models.ImageField(upload_to='previews/pages/', null=True, blank=True)
+    raw_image = models.ImageField(upload_to='previews/pages/', null=True, blank=True)
+    generated_svg = models.FileField(upload_to='previews/svgs/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -116,6 +118,8 @@ class BookPage(models.Model):
     page_template = models.ForeignKey(PageTemplate, on_delete=models.SET_NULL, null=True, blank=True)
     page_number = models.PositiveIntegerField()
     generated_image = models.ImageField(upload_to='generated_books/pages/', null=True, blank=True)
+    raw_image = models.ImageField(upload_to='generated_books/pages/', null=True, blank=True)
+    generated_svg = models.FileField(upload_to='generated_books/svgs/', null=True, blank=True)
     is_preview = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

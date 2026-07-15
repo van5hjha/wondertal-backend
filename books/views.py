@@ -140,7 +140,7 @@ def get_preview_status_view(request, preview_request_id):
     if preview_request.status == 'completed':
         results = preview_request.results.all().order_by('page_number')
         for res in results:
-            image_url = request.build_absolute_uri(res.generated_image.url) if res.generated_image else None
+            image_url = request.build_absolute_uri(res.generated_svg.url) if res.generated_svg else request.build_absolute_uri(res.raw_image.url) if res.raw_image else None
             pages.append({
                 'page_number': res.page_number,
                 'image_url': image_url

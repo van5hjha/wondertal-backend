@@ -25,6 +25,7 @@ urlpatterns = [
     path('', include('books.urls')),
     path('', include('reviews.urls')),
     path('', include('catalog.urls')),
+    path('api/', include('config.urls')),
 ]
 
 if settings.DEBUG:
