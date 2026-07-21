@@ -75,9 +75,16 @@ class PageTemplate(models.Model):
         return f"{self.book_template.title} - Page {self.page_number}"
 
 class BeforeAfterSlide(models.Model):
+    SLIDE_TYPE_CHOICES = [
+        ('before_after', 'Before-After'),
+        ('static', 'Static'),
+    ]
+
     title = models.CharField(max_length=100, blank=True, null=True)
-    before_image = models.ImageField(upload_to='sliders/')
-    after_image = models.ImageField(upload_to='sliders/')
+    slide_type = models.CharField(max_length=20, choices=SLIDE_TYPE_CHOICES, default='before_after')
+    before_image = models.ImageField(upload_to='sliders/', blank=True, null=True)
+    after_image = models.ImageField(upload_to='sliders/', blank=True, null=True)
+    image = models.ImageField(upload_to='sliders/', blank=True, null=True)
     is_active = models.BooleanField(default=True)
     order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

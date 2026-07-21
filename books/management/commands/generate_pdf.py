@@ -80,9 +80,87 @@ class Command(BaseCommand):
 
         merger = PdfWriter()
 
+        import re
         try:
+            def split_paint_order_stroke(match):
+                attrs = match.group(1)
+                inner_content = match.group(2)
+                style_match = re.search(r'style="([^"]*)"', attrs)
+                if not style_match:
+                    return match.group(0)
+                style_content = style_match.group(1)
+                
+                # Find the stroke color to use as the fill color for the bottom stroke layer
+                # to ensure the layout engine uses identical text metrics/baseline alignment
+                stroke_color_match = re.search(r'stroke:\s*([^;]+);?', style_content)
+                stroke_color = stroke_color_match.group(1).strip() if stroke_color_match else 'none'
+                
+                if stroke_color != 'none':
+                    stroke_style = re.sub(r'fill:\s*[^;]+;?', f'fill: {stroke_color};', style_content)
+                else:
+                    stroke_style = re.sub(r'fill:\s*[^;]+;?', 'fill: none;', style_content)
+                    
+                fill_style = re.sub(r'stroke:\s*[^;]+;?', 'stroke: none;', style_content)
+                
+                stroke_attrs = attrs.replace(f'style="{style_content}"', f'style="{stroke_style}"')
+                fill_attrs = attrs.replace(f'style="{style_content}"', f'style="{fill_style}"')
+                return f'<text {stroke_attrs}>{inner_content}</text>\n<text {fill_attrs}>{inner_content}</text>'
+
             for svg_path in svg_paths:
-                pdf_bytes = cairosvg.svg2pdf(url=svg_path)
+                with open(svg_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                normalized_content = re.sub(r'rgb\(\s*([\d\.]+)%\s+([\d\.]+)%\s+([\d\.]+)%\s*\)', r'rgb(\1%, \2%, \3%)', content)
+                
+                # Parse outline filters and emulate them as standard strokes
+                filters = {}
+                filter_pattern = re.compile(r'<filter\s+[^>]*id=["\']([^"\']+)["\'][^>]*>(.*?)</filter>', re.DOTALL)
+                for m in filter_pattern.finditer(normalized_content):
+                    filter_id = m.group(1)
+                    filter_body = m.group(2)
+                    radius_match = re.search(r'<feMorphology\s+[^>]*radius=["\']([^"\']+)["\']', filter_body)
+                    radius = float(radius_match.group(1)) if radius_match else 10.0
+                    color_match = re.search(r'<feFlood\s+[^>]*flood-color=["\']([^"\']+)["\']', filter_body)
+                    color = color_match.group(1) if color_match else '#ff0000'
+                    filters[filter_id] = {'radius': radius, 'color': color}
+
+                def process_text_filters(match):
+                    attrs = match.group(1)
+                    inner_content = match.group(2)
+                    style_match = re.search(r'style=["\']([^"\']*)["\']', attrs)
+                    if not style_match:
+                        return match.group(0)
+                    style_content = style_match.group(1)
+                    filter_url_match = re.search(r'filter:\s*url\((?:&quot;)?#([^&\)]+)(?:&quot;)?\);?', style_content)
+                    if not filter_url_match:
+                        return match.group(0)
+                    filter_id = filter_url_match.group(1)
+                    if filter_id in filters:
+                        f_info = filters[filter_id]
+                        new_style = style_content
+                        new_style = re.sub(r'filter:\s*url\([^\)]+\);?', '', new_style)
+                        new_style = re.sub(r'stroke-width:\s*[^;]+;?', '', new_style)
+                        new_style = re.sub(r'paint-order:\s*[^;]+;?', '', new_style)
+                        new_style = re.sub(r'stroke:\s*[^;]+;?', '', new_style)
+                        new_style = re.sub(r'stroke-linejoin:\s*[^;]+;?', '', new_style)
+                        new_style = re.sub(r'stroke-miterlimit:\s*[^;]+;?', '', new_style)
+                        stroke_width = f_info['radius'] * 2
+                        stroke_color = f_info['color']
+                        if new_style and not new_style.strip().endswith(';'):
+                            new_style += ';'
+                        new_style += f' stroke: {stroke_color}; stroke-width: {stroke_width}px; paint-order: stroke; stroke-linejoin: miter; stroke-miterlimit: 10;'
+                        attrs_replaced = attrs.replace(style_match.group(0), f'style="{new_style}"')
+                        return f'<text {attrs_replaced}>{inner_content}</text>'
+                    return match.group(0)
+
+                normalized_content = re.sub(
+                    r'<text\s+([^>]*style=["\'][^"\']*filter:\s*url[^"\']*["\'][^>]*)>(.*?)</text>',
+                    process_text_filters,
+                    normalized_content,
+                    flags=re.DOTALL
+                )
+
+                normalized_content = re.sub(r'<text\s+([^>]*style="[^"]*paint-order:\s*stroke;[^"]*"[^>]*)>(.*?)</text>', split_paint_order_stroke, normalized_content, flags=re.DOTALL)
+                pdf_bytes = cairosvg.svg2pdf(bytestring=normalized_content.encode('utf-8'))
                 merger.append(BytesIO(pdf_bytes))
             
             with open(final_pdf_path, 'wb') as f:

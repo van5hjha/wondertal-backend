@@ -13,16 +13,22 @@ class ProductPagination(PageNumberPagination):
 
 def get_sliders_view(request):
     """
-    API: Retrieve a list of active before-after slides.
+    API: Retrieve a list of active before-after and static slides.
     """
     slides = BeforeAfterSlide.objects.filter(is_active=True).order_by('order', 'id')
     data = []
     for s in slides:
+        before_url = request.build_absolute_uri(s.before_image.url) if s.before_image else ''
+        after_url = request.build_absolute_uri(s.after_image.url) if s.after_image else ''
+        img_url = request.build_absolute_uri(s.image.url) if s.image else before_url
+
         data.append({
             'id': s.id,
-            'title': s.title,
-            'beforeImageUrl': request.build_absolute_uri(s.before_image.url) if s.before_image else '',
-            'afterImageUrl': request.build_absolute_uri(s.after_image.url) if s.after_image else '',
+            'title': s.title or '',
+            'type': s.slide_type,
+            'beforeImageUrl': before_url,
+            'afterImageUrl': after_url,
+            'imageUrl': img_url,
         })
     return JsonResponse(data, safe=False)
 

@@ -49,7 +49,7 @@ class PageTemplateAdmin(admin.ModelAdmin):
 
 @admin.register(BeforeAfterSlide)
 class BeforeAfterSlideAdmin(admin.ModelAdmin):
-    list_display = ('title', 'order', 'is_active', 'created_at')
-    list_filter = ('is_active',)
+    list_display = ('title', 'slide_type', 'order', 'is_active', 'created_at')
+    list_filter = ('slide_type', 'is_active')
     search_fields = ('title',)
 
