@@ -19,7 +19,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'id', 'title', 'ageRange', 'description', 'rating',
             'reviewCount', 'priceHardcover', 'priceSoftcover',
             'originalPriceHardcover', 'originalPriceSoftcover',
-            'previewItems', 'features', 'tags', 'bookTemplateId'
+            'previewItems', 'features', 'tags', 'category', 'bookTemplateId'
         ]
 
     def get_bookTemplateId(self, obj):

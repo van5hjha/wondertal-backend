@@ -38,6 +38,10 @@ def get_products_view(request):
     API: Retrieve a list of active products with pagination (6 products per page).
     """
     products = Product.objects.filter(is_active=True).order_by('id')
+    category = request.query_params.get('category')
+    if category:
+        products = products.filter(category=category)
+        
     paginator = ProductPagination()
     page = paginator.paginate_queryset(products, request)
     if page is not None:

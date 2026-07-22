@@ -19,6 +19,16 @@ class Product(models.Model):
     original_price_hardcover = models.PositiveIntegerField(default=1999, help_text="Original list price / MRP before discount for hardcover")
     features = models.JSONField(default=list, blank=True)
     tags = models.JSONField(default=list, blank=True)
+    category = models.CharField(
+        max_length=50,
+        choices=[
+            ('storybook', 'Personalized Storybook'),
+            ('frame', 'Personalized Photo Frame'),
+            ('sticker', 'Personalized Sticker'),
+            ('label', 'Personalized Name Label'),
+        ],
+        default='storybook'
+    )
 
     def __str__(self):
         return self.title
