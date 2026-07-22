@@ -25,14 +25,14 @@ class PreviewAPITests(TestCase):
             book_template=self.book_template,
             page_number=1,
             story_text="Once upon a time...",
-            image_name="page_1.png",
+            image="page_1.png",
             is_preview=True
         )
         self.page_2 = PageTemplate.objects.create(
             book_template=self.book_template,
             page_number=2,
             story_text="Then something happened...",
-            image_name="page_2.png",
+            image="page_2.png",
             is_preview=False
         )
 
@@ -154,7 +154,7 @@ class PreviewAPITests(TestCase):
             page_template=self.page_1,
             page_number=1
         )
-        result.generated_image.save("out1.png", mock_output)
+        result.raw_image.save("out1.png", mock_output)
         
         url = reverse('books:get_preview_status', kwargs={'preview_request_id': preview_req.id})
         response = self.client.get(url)
@@ -166,7 +166,7 @@ class PreviewAPITests(TestCase):
         self.assertIn('/media/previews/pages/', resp_data['pages'][0]['image_url'])
 
         # Clean up files generated during test
-        result.generated_image.delete()
+        result.raw_image.delete()
 
     @patch('books.processing.ComfyUIClient')
     def test_process_preview_request_logic(self, MockComfyUIClient):
@@ -190,7 +190,7 @@ class PreviewAPITests(TestCase):
         ChildFace.objects.create(preview_request=preview_req, image=self.mock_image_3)
 
         # Let's set a mask image name to test mask input mapping
-        self.page_1.mask_image_name = "mask_1.png"
+        self.page_1.mask_image = "mask_1.png"
         self.page_1.save()
 
         from books.processing import process_preview_request
@@ -204,14 +204,14 @@ class PreviewAPITests(TestCase):
         # Verify result was saved
         result = preview_req.results.first()
         self.assertEqual(result.page_number, 1)
-        self.assertTrue(result.generated_image)
-        result.generated_image.delete() # Clean up
+        self.assertTrue(result.raw_image)
+        result.raw_image.delete() # Clean up
 
         # Verify ComfyUI was called with Node 8 and Node 28 inputs correctly populated
         self.assertEqual(mock_client_instance.run_workflow.call_count, 1)
         called_prompt = mock_client_instance.run_workflow.call_args[0][0]
-        self.assertEqual(called_prompt["8"]["inputs"]["image"], "page_1.png")
-        self.assertEqual(called_prompt["28"]["inputs"]["image"], "mask_1.png")
+        self.assertEqual(called_prompt["8"]["inputs"]["image"], "page_1.png_uploaded")
+        self.assertEqual(called_prompt["28"]["inputs"]["image"], "mask_1.png_uploaded")
         
         faces = list(preview_req.faces.all().order_by('id'))
         self.assertEqual(called_prompt["5"]["inputs"]["image"], os.path.basename(faces[0].image.name) + "_uploaded")

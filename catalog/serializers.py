@@ -9,6 +9,8 @@ class ProductSerializer(serializers.ModelSerializer):
     reviewCount = serializers.IntegerField(source='review_count')
     priceHardcover = serializers.IntegerField(source='price_hardcover')
     priceSoftcover = serializers.IntegerField(source='price_softcover')
+    originalPriceSoftcover = serializers.IntegerField(source='original_price_softcover')
+    originalPriceHardcover = serializers.IntegerField(source='original_price_hardcover')
     rating = serializers.FloatField()
 
     class Meta:
@@ -16,7 +18,8 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'ageRange', 'description', 'rating',
             'reviewCount', 'priceHardcover', 'priceSoftcover',
-            'previewItems', 'features', 'bookTemplateId'
+            'originalPriceHardcover', 'originalPriceSoftcover',
+            'previewItems', 'features', 'tags', 'bookTemplateId'
         ]
 
     def get_bookTemplateId(self, obj):

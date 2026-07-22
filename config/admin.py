@@ -25,4 +25,10 @@ class SiteConfigurationAdmin(admin.ModelAdmin):
         ('Cancellation & Refund Policies', {
             'fields': ('cancellation_window_hours',)
         }),
+        ('Announcement & Discount Banners', {
+            'fields': ('announcement_enabled', 'announcement_text', 'discount_bar_enabled', 'discount_bar_text')
+        }),
+        ('Social Proof & Live Stats', {
+            'fields': ('viewing_min', 'viewing_max', 'crafting_min', 'crafting_max')
+        }),
     )

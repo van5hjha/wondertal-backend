@@ -27,7 +27,7 @@ class ProductPreviewItemAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('title', 'age_range', 'price_hardcover', 'price_softcover', 'rating', 'review_count', 'is_active')
+    list_display = ('title', 'age_range', 'price_softcover', 'original_price_softcover', 'price_hardcover', 'original_price_hardcover', 'rating', 'is_active')
     list_filter = ('is_active', 'age_range')
     search_fields = ('title', 'description')
     prepopulated_fields = {'slug': ('title',)}

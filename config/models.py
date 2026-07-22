@@ -31,6 +31,18 @@ class SiteConfiguration(models.Model):
     # Cancellation & refund policies
     cancellation_window_hours = models.IntegerField(default=2)
 
+    # Announcement & Discount Banner settings
+    announcement_text = models.CharField(max_length=255, default='✨ New Story Alert: "The Crystal Cave" is now available for personalization! ✨', blank=True, help_text="Top header announcement text")
+    announcement_enabled = models.BooleanField(default=True, help_text="Enable top header announcement bar")
+    discount_bar_text = models.CharField(max_length=255, default='⚡ Limited Time Offer: Save up to 33% OFF on all custom storybooks today!', blank=True, help_text="Promotional discount banner text")
+    discount_bar_enabled = models.BooleanField(default=True, help_text="Enable promotional discount banner")
+
+    # Social proof counters
+    viewing_min = models.IntegerField(default=60, help_text="Minimum range for active page viewers counter")
+    viewing_max = models.IntegerField(default=99, help_text="Maximum range for active page viewers counter")
+    crafting_min = models.IntegerField(default=8, help_text="Minimum range for stories being crafted counter")
+    crafting_max = models.IntegerField(default=50, help_text="Maximum range for stories being crafted counter")
+
     def save(self, *args, **kwargs):
         if not self.pk and SiteConfiguration.objects.exists():
             raise ValidationError('There can be only one SiteConfiguration instance.')

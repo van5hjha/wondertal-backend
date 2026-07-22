@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 from django.core.files import File
 from django.core.files.base import ContentFile
 from django.conf import settings
-from catalog.models import Product, BookTemplate, ProductPreviewImage
+from catalog.models import Product, BookTemplate, ProductPreviewImage, ProductPreviewItem
 
 PRODUCTS_DATA = [
     {
@@ -17,6 +17,7 @@ PRODUCTS_DATA = [
         "price_hardcover": 1499,
         "price_softcover": 999,
         "features": ["26 Custom Illustrated Pages", "High-res Face Mapping", "Printed in India (7 day ship)"],
+        "tags": ["Learning", "Creativity", "Fun"],
         "preview_images": [
             "assets/images/before_image.png"
         ],
@@ -36,6 +37,7 @@ PRODUCTS_DATA = [
         "price_hardcover": 1499,
         "price_softcover": 999,
         "features": ["28 Custom Illustrated Pages", "High-res Face Mapping", "Printed in India (7 day ship)"],
+        "tags": ["Persistence", "Kindness", "Curiosity"],
         "preview_images": [
             "assets/images/galactic_cover.png",
             "https://lh3.googleusercontent.com/aida-public/AB6AXuDFLtaGpNexdOSZrynMkKr5QiGWyQ9UbV626c_wZw1ZCPwgBwUX1hWm0sc1PnkUCjmaT5ZGBXnOJGZpe-GZv5gt1rysaHMPDwLj_u-l6mbEV2IpVZX6I-xWBBbU0msPLSu9Bcf3sFjrPWKfD_AD8-gAFyaCAqDrwPvL0hSGcTxSKuMH80o0NPM9f9ZroNw--_p1uUsecJQPcZdyOmOR68qbbjQahLC73LxuDMrC035QzSxvcEqcUZGSvAm09SerjGAnr6JeuBhdjTs",
@@ -59,6 +61,7 @@ PRODUCTS_DATA = [
         "price_hardcover": 1499,
         "price_softcover": 999,
         "features": ["24 Custom Illustrated Pages", "High-res Face Mapping", "Printed in India (7 day ship)"],
+        "tags": ["Teamwork", "Bravery", "Friendship"],
         "preview_images": [
             "assets/images/jurassic_cover.png"
         ],
@@ -78,6 +81,7 @@ PRODUCTS_DATA = [
         "price_hardcover": 1499,
         "price_softcover": 999,
         "features": ["26 Custom Illustrated Pages", "High-res Face Mapping", "Printed in India (7 day ship)"],
+        "tags": ["Empathy", "Discovery", "Patience"],
         "preview_images": [
             "assets/images/safari_cover.png"
         ],
@@ -109,7 +113,8 @@ class Command(BaseCommand):
                     "review_count": data["review_count"],
                     "price_hardcover": data["price_hardcover"],
                     "price_softcover": data["price_softcover"],
-                    "features": data["features"],
+                    "features": data.get("features", []),
+                    "tags": data.get("tags", []),
                 }
             )
 
@@ -122,19 +127,26 @@ class Command(BaseCommand):
                 product.review_count = data["review_count"]
                 product.price_hardcover = data["price_hardcover"]
                 product.price_softcover = data["price_softcover"]
-                product.features = data["features"]
+                product.features = data.get("features", [])
+                product.tags = data.get("tags", [])
                 product.save()
                 self.stdout.write(f"Updated Product: '{product.title}'")
             else:
                 self.stdout.write(f"Created Product: '{product.title}'")
 
-            # 2. Re-create Preview Images to ensure freshness
-            product.preview_images.all().delete()
+            # 2. Re-create Preview Items to ensure freshness
+            product.preview_items.all().delete()
             frontend_dir = os.path.abspath(os.path.join(settings.BASE_DIR, '..', 'frontend'))
             
+            preview_item = ProductPreviewItem.objects.create(
+                product=product,
+                item_type='static',
+                order=0
+            )
+
             for idx, img_url in enumerate(data["preview_images"]):
                 preview_image = ProductPreviewImage(
-                    product=product,
+                    item=preview_item,
                     order=idx
                 )
                 
